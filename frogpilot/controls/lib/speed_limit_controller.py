@@ -241,10 +241,13 @@ class SpeedLimitController:
   def update_limits(self, dashboard_speed_limit, gps_position, navigation_speed_limit, now, time_validated, v_cruise, v_ego, sm):
     self.update_map_speed_limit(gps_position, v_ego)
 
+    vision_speed_limit = params_memory.get_float("VisionSpeedLimit") if self.frogpilot_toggles.slc_vision else 0
+
     limits = {
       "Dashboard": dashboard_speed_limit,
       "Map Data": self.map_speed_limit,
-      "Navigation": navigation_speed_limit
+      "Navigation": navigation_speed_limit,
+      "Vision": vision_speed_limit,
     }
     filtered_limits = {source: limit for source, limit in limits.items() if limit >= 1}
 

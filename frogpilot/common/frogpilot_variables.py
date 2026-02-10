@@ -428,6 +428,7 @@ frogpilot_default_params: list[tuple[str, str | bytes, int, str]] = [
   ("SLCPriority1", "Navigation", 2, "Navigation"),
   ("SLCPriority2", "Map Data", 2, "Map Data"),
   ("SLCPriority3", "Dashboard", 2, "Dashboard"),
+  ("SLCVision", "0", 2, "0"),
   ("SNGHack", "1", 2, "0"),
   ("SpeedLimitChangedAlert", "0", 0, "0"),
   ("SpeedLimitController", "1", 0, "0"),
@@ -1028,6 +1029,7 @@ class FrogPilotVariables:
     toggle.speed_limit_priority1 = params.get("SLCPriority1", encoding="utf-8") if toggle.speed_limit_controller and tuning_level >= level["SLCPriority1"] else default.get("SLCPriority1", encoding="utf-8")
     toggle.speed_limit_priority2 = params.get("SLCPriority2", encoding="utf-8") if toggle.speed_limit_controller and tuning_level >= level["SLCPriority2"] else default.get("SLCPriority2", encoding="utf-8")
     toggle.speed_limit_priority3 = params.get("SLCPriority3", encoding="utf-8") if toggle.speed_limit_controller and tuning_level >= level["SLCPriority3"] else default.get("SLCPriority3", encoding="utf-8")
+    toggle.slc_vision = toggle.speed_limit_controller and (params.get_bool("SLCVision") if tuning_level >= level["SLCVision"] else default.get_bool("SLCVision"))
     toggle.speed_limit_priority_highest = toggle.speed_limit_priority1 == "Highest"
     toggle.speed_limit_priority_lowest = toggle.speed_limit_priority1 == "Lowest"
     toggle.speed_limit_sources = toggle.speed_limit_controller and (params.get_bool("SpeedLimitSources") if tuning_level >= level["SpeedLimitSources"] else default.get_bool("SpeedLimitSources"))
