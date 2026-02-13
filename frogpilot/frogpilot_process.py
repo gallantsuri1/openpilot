@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import datetime
 import json
-import os
 import time
 
 from cereal import messaging
@@ -11,7 +10,7 @@ from openpilot.common.time import system_time_valid
 from openpilot.frogpilot.assets.model_manager import MODEL_DOWNLOAD_ALL_PARAM, MODEL_DOWNLOAD_PARAM, ModelManager
 from openpilot.frogpilot.assets.theme_manager import THEME_COMPONENT_PARAMS, ThemeManager
 from openpilot.frogpilot.common.frogpilot_functions import backup_toggles
-from openpilot.frogpilot.common.frogpilot_utilities import capture_report, flash_panda, is_url_pingable, lock_doors, run_thread_with_lock, update_maps, update_openpilot
+from openpilot.frogpilot.common.frogpilot_utilities import capture_report, check_remote_toggles, flash_panda, is_url_pingable, lock_doors, run_thread_with_lock, update_maps, update_openpilot
 from openpilot.frogpilot.common.frogpilot_variables import ERROR_LOGS_PATH, FrogPilotVariables, get_frogpilot_toggles, params, params_cache, params_memory
 from openpilot.frogpilot.controls.frogpilot_planner import FrogPilotPlanner
 from openpilot.frogpilot.system.frogpilot_stats import send_stats
@@ -104,7 +103,7 @@ def frogpilot_thread():
       if frogpilot_toggles.random_themes:
         theme_manager.update_active_theme(time_validated, frogpilot_toggles, randomize_theme=True)
 
-      if time_validated and is_url_pingable(os.environ.get("STATS_URL", "")):
+      if time_validated:
         send_stats()
 
     elif started and not started_previously:
@@ -166,6 +165,8 @@ def frogpilot_thread():
 
       theme_manager.update_active_theme(time_validated, frogpilot_toggles)
       run_thread_with_lock("update_checks", update_checks, (model_manager, now, theme_manager, frogpilot_toggles, True))
+    elif rate_keeper.frame % 200 == 0:
+      run_thread_with_lock("check_remote_toggles", check_remote_toggles, (started, sm))
 
     rate_keeper.keep_time()
 
