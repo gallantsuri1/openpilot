@@ -74,8 +74,8 @@ class CarSpecificEvents:
             events.add(EventName.speedTooLow)
           else:
             events.add(EventName.cruiseDisabled)
-      if self.CP.minEnableSpeed > 0 and CS.vEgo < 0.001:
-        events.add(EventName.manualRestart)
+      #if self.CP.minEnableSpeed > 0 and CS.vEgo < 0.001:
+        #events.add(EventName.manualRestart)
 
     elif self.CP.brand == 'toyota':
       # TODO: when we check for unexpected disengagement, check gear not S1, S2, S3
@@ -89,9 +89,9 @@ class CarSpecificEvents:
           if CC.actuators.accel > 0.3:
             # some margin on the actuator to not false trigger cancellation while stopping
             events.add(EventName.speedTooLow)
-          if CS.vEgo < 0.001:
+          #if CS.vEgo < 0.001:
             # while in standstill, send a user alert
-            events.add(EventName.manualRestart)
+            #events.add(EventName.manualRestart)
 
     elif self.CP.brand == 'gm':
       events = self.create_common_events(CS, CS_prev, extra_gears=[GearShifter.sport, GearShifter.low,
