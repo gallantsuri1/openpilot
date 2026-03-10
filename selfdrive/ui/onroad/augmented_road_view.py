@@ -110,8 +110,12 @@ class AugmentedRoadView(CameraView):
           self._click_callback()
 
   def _draw_border(self, rect: rl.Rectangle):
+    rl.draw_rectangle_lines_ex(rect, UI_BORDER_SIZE, rl.BLACK)
+    border_roundness = 0.12
     border_color = BORDER_COLORS.get(ui_state.status, BORDER_COLORS[UIStatus.DISENGAGED])
-    rl.draw_rectangle_lines_ex(rect, UI_BORDER_SIZE, border_color)
+    border_rect = rl.Rectangle(rect.x + UI_BORDER_SIZE, rect.y + UI_BORDER_SIZE,
+                               rect.width - 2 * UI_BORDER_SIZE, rect.height - 2 * UI_BORDER_SIZE)
+    rl.draw_rectangle_rounded_lines_ex(border_rect, border_roundness, 10, UI_BORDER_SIZE, border_color)
 
   def _switch_stream_if_needed(self, sm):
     if sm['selfdriveState'].experimentalMode and WIDE_CAM in self.available_streams:
