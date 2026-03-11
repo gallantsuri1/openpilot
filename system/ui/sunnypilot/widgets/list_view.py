@@ -409,3 +409,16 @@ class LineSeparatorSP(LineSeparator):
     rl.draw_line(int(self._rect.x) + LINE_PADDING, line_y,
                  int(self._rect.x + self._rect.width) - LINE_PADDING, line_y,
                  LINE_COLOR)
+
+
+# Timezone selector imports and helper
+from openpilot.system.ui.sunnypilot.widgets.timezone_selector import TimezoneSelectorSP
+
+
+def timezone_item_sp(title: str | Callable[[], str], param: str,
+                     description: str | Callable[[], str] | None = None,
+                     enabled: bool | Callable[[], bool] = True,
+                     icon: str = "", inline: bool = False) -> ListItemSP:
+  """Create a timezone selector list item."""
+  action = TimezoneSelectorSP(param, enabled=enabled)
+  return ListItemSP(title=title, description=description, action_item=action, icon=icon, inline=inline)

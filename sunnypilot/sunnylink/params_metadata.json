@@ -1387,5 +1387,13 @@
   "Version": {
     "title": "openpilot Version",
     "description": ""
+  },
+  "TimeZone": {
+    "title": "Time Zone",
+    "description": "Select your local time zone for displaying the correct time on the onroad screen."
+  },
+  "TimeZoneMigrated": {
+    "title": "TimeZoneMigrated",
+    "description": "This param is to track whether TimeZone needs to be migrated."
   }
 }

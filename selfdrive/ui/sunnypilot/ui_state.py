@@ -10,6 +10,7 @@ from cereal import messaging, log, custom
 from openpilot.common.params import Params
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.display import OnroadBrightness
 from openpilot.sunnypilot.sunnylink.sunnylink_state import SunnylinkState
+from openpilot.sunnypilot.system.params_migration import DEFAULT_TIMEZONE
 from openpilot.system.ui.lib.application import gui_app
 
 OpenpilotState = log.SelfdriveState.OpenpilotState
@@ -38,6 +39,7 @@ class UIStateSP:
 
     self.onroad_brightness_timer: int = 0
     self.custom_interactive_timeout: int = self.params.get("InteractivityTimeout", return_default=True)
+    self.time_zone: str = self.params.get("TimeZone", return_default=True) or DEFAULT_TIMEZONE
     self.reset_onroad_sleep_timer()
     self.CP_SP: custom.CarParamsSP | None = None
     self.has_icbm: bool = False
@@ -142,6 +144,7 @@ class UIStateSP:
     self.speed_limit_mode = self.params.get("SpeedLimitMode", return_default=True)
     self.standstill_timer = self.params.get_bool("StandstillTimer")
     self.sunnylink_enabled = self.params.get_bool("SunnylinkEnabled")
+    self.time_zone = self.params.get("TimeZone", return_default=True) or DEFAULT_TIMEZONE
     self.torque_bar = self.params.get_bool("TorqueBar")
     self.true_v_ego_ui = self.params.get_bool("TrueVEgoUI")
     self.turn_signals = self.params.get_bool("ShowTurnSignals")
