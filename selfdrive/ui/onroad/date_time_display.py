@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import pyray as rl
+from timezonefinder import TimezoneFinder
 from openpilot.common.params import Params
 from openpilot.common.gps import get_gps_location_service
 from openpilot.selfdrive.ui.ui_state import ui_state
@@ -18,6 +19,9 @@ ROW_SPACING = 8  # Space between rows
 # Default timezone
 DEFAULT_TIMEZONE = "America/Chicago"
 
+# Timezone finder (singleton, initialized once)
+_tf = None
+
 
 class DateTimeDisplay(Widget):
   """Displays GPS location, GPS time, and local time at the bottom right corner when engaged."""
@@ -33,50 +37,70 @@ class DateTimeDisplay(Widget):
     self.params = Params()
     self._gps_location_service = get_gps_location_service(self.params)
     self.default_tz = ZoneInfo(DEFAULT_TIMEZONE)
-    
+
+    # Initialize timezone finder
+    global _tf
+    if _tf is None:
+      _tf = TimezoneFinder()
+
     # Cache for GPS data to detect changes
     self._prev_latitude = None
     self._prev_longitude = None
     self._gps_location_text = None
+    self._timezone_str = None
+    self._local_tz = None
 
   def _update_state(self):
-    """Update GPS coordinates whenever new data is available."""
+    """Update GPS coordinates and timezone whenever new data is available."""
     try:
       # Check if GPS data is valid and updated
       if not ui_state.sm.valid[self._gps_location_service]:
         self._gps_location_text = None
         return
-      
+
       gps_data = ui_state.sm[self._gps_location_service]
-      
+
       # Check if we have a valid fix
       if not gps_data.hasFix:
         self._gps_location_text = None
         return
-      
+
       latitude = gps_data.latitude
       longitude = gps_data.longitude
-      
+
       # Only update if coordinates changed
       if latitude != self._prev_latitude or longitude != self._prev_longitude:
         self._prev_latitude = latitude
         self._prev_longitude = longitude
-        
+
         # Format coordinates
         lat_dir = "N" if latitude >= 0 else "S"
         lon_dir = "E" if longitude >= 0 else "W"
-        
+
         lat_abs = abs(latitude)
         lon_abs = abs(longitude)
-        
+
         # Format as DD°MM.MMM'
         lat_deg = int(lat_abs)
         lat_min = (lat_abs - lat_deg) * 60
-        
+
         lon_deg = int(lon_abs)
         lon_min = (lon_abs - lon_deg) * 60
-        
+
         self._gps_location_text = f"{lat_deg}°{lat_min:06.3f}'{lat_dir}  {lon_deg}°{lon_min:06.3f}'{lon_dir}"
+
+        # Get timezone from coordinates
+        try:
+          tz_str = _tf.timezone_at(lat=latitude, lng=longitude)
+          if tz_str:
+            self._timezone_str = tz_str
+            self._local_tz = ZoneInfo(tz_str)
+          else:
+            self._timezone_str = None
+            self._local_tz = self.default_tz
+        except Exception:
+          self._timezone_str = None
+          self._local_tz = self.default_tz
     except Exception:
       self._gps_location_text = None
 
@@ -118,16 +142,24 @@ class DateTimeDisplay(Widget):
     
     # Prepare the three rows
     rows = []
-    
-    # Row 1: GPS coordinates (if available)
+
+    # Row 1: Timezone (if available)
+    if self._timezone_str:
+      rows.append({
+        'text': self._timezone_str,
+        'font': self.gps_font,
+        'font_size': self.gps_font_size,
+      })
+
+    # Row 2: GPS coordinates (if available)
     if gps_location_text:
       rows.append({
         'text': gps_location_text,
         'font': self.gps_font,
         'font_size': self.gps_font_size,
       })
-    
-    # Row 2: GPS time in UTC (if available)
+
+    # Row 3: GPS time in UTC (if available)
     if gps_dt is not None:
       gps_time_str = gps_dt.strftime("%I:%M %p UTC")
       rows.append({
@@ -135,15 +167,16 @@ class DateTimeDisplay(Widget):
         'font': self.font,
         'font_size': self.font_size,
       })
-    
-    # Row 3: Local time (America/Chicago default timezone)
-    # Always use system time in default timezone (independent of GPS)
-    local_dt = datetime.now(self.default_tz)
-    
+
+    # Row 4: Local time (using GPS-derived timezone or default)
+    # Use timezone from GPS coordinates if available, otherwise use default
+    local_tz = self._local_tz if self._local_tz else self.default_tz
+    local_dt = datetime.now(local_tz)
+
     date_str = local_dt.strftime("%a, %b %d")
     time_str = local_dt.strftime("%I:%M %p")
     local_time_text = f"{date_str}  |  {time_str}"
-    
+
     rows.append({
       'text': local_time_text,
       'font': self.font,
