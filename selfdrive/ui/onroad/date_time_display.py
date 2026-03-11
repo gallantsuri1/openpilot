@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from zoneinfo import ZoneInfo
 import pyray as rl
 from timezonefinder import TimezoneFinder
@@ -16,8 +16,8 @@ DATE_TIME_RIGHT_OFFSET = 60
 GPS_FONT_SIZE = 40
 ROW_SPACING = 8  # Space between rows
 
-# Default timezone
-DEFAULT_TIMEZONE = "America/Chicago"
+# Param key for persisting last known timezone
+LAST_TIMEZONE_PARAM = "LastTimezone"
 
 # Timezone finder (singleton, initialized once)
 _tf = None
@@ -36,24 +36,26 @@ class DateTimeDisplay(Widget):
     self.text_color_shadow = rl.Color(0, 0, 0, 180)
     self.params = Params()
     self._gps_location_service = get_gps_location_service(self.params)
-    self.default_tz = ZoneInfo(DEFAULT_TIMEZONE)
 
     # Initialize timezone finder
     global _tf
     if _tf is None:
       _tf = TimezoneFinder()
 
+    # Load timezone from params (default: "America/Chicago" from params_keys.h)
+    self._local_tz_str = self.params.get(LAST_TIMEZONE_PARAM)
+    self._local_tz = ZoneInfo(self._local_tz_str)
+
     # Cache for GPS data to detect changes
     self._prev_latitude = None
     self._prev_longitude = None
     self._gps_location_text = None
     self._timezone_str = None
-    self._local_tz = None
 
   def _update_state(self):
-    """Update GPS coordinates and timezone whenever new data is available."""
+    """Update GPS coordinates and timezone from GPS if available."""
     try:
-      # Check if GPS data is valid and updated
+      # Check if GPS data is valid
       if not ui_state.sm.valid[self._gps_location_service]:
         self._gps_location_text = None
         return
@@ -89,45 +91,24 @@ class DateTimeDisplay(Widget):
 
         self._gps_location_text = f"{lat_deg}°{lat_min:06.3f}'{lat_dir}  {lon_deg}°{lon_min:06.3f}'{lon_dir}"
 
-        # Get timezone from coordinates
+        # Get timezone from coordinates and update if different from persisted value
         try:
           tz_str = _tf.timezone_at(lat=latitude, lng=longitude)
-          if tz_str:
-            self._timezone_str = tz_str
+          if tz_str and tz_str != self._local_tz_str:
+            # Update local_tz and persist to params
+            self._local_tz_str = tz_str
             self._local_tz = ZoneInfo(tz_str)
+            self._timezone_str = tz_str
+            self.params.put(LAST_TIMEZONE_PARAM, tz_str)
+          elif tz_str:
+            # Same as persisted, just set for display
+            self._timezone_str = tz_str
           else:
             self._timezone_str = None
-            self._local_tz = self.default_tz
         except Exception:
           self._timezone_str = None
-          self._local_tz = self.default_tz
     except Exception:
       self._gps_location_text = None
-
-  def _get_gps_datetime(self) -> datetime | None:
-    """Get current datetime from GPS if available (similar to timed.py)."""
-    try:
-      # Check if GPS data is valid
-      if not ui_state.sm.valid[self._gps_location_service]:
-        return None
-      
-      gps_data = ui_state.sm[self._gps_location_service]
-      
-      # Check if we have a valid fix
-      if not gps_data.hasFix:
-        return None
-      
-      # Get time from GPS (unixTimestampMillis is in UTC) - same as timed.py
-      gps_time = datetime.fromtimestamp(gps_data.unixTimestampMillis / 1000., tz=timezone.utc)
-      
-      # Check if GPS time is reasonable (not too old)
-      time_diff = abs((datetime.now(timezone.utc) - gps_time).total_seconds())
-      if time_diff > 60:  # More than 60 seconds old
-        return None
-      
-      return gps_time
-    except Exception:
-      return None
 
   def _render(self, rect: rl.Rectangle):
     # Only render when engaged
@@ -136,42 +117,40 @@ class DateTimeDisplay(Widget):
 
     # Get GPS location text (already updated in _update_state)
     gps_location_text = self._gps_location_text
-    
-    # Get GPS time (always fetch fresh for accurate time)
-    gps_dt = self._get_gps_datetime()
-    
-    # Prepare the three rows
+
+    # Prepare rows
     rows = []
 
-    # Row 1: Timezone (if available)
+    # Row 1: Timezone (or GPS not loaded message)
     if self._timezone_str:
       rows.append({
         'text': self._timezone_str,
-        'font': self.gps_font,
+        'font': self.font,
+        'font_size': self.gps_font_size,
+      })
+    else:
+      rows.append({
+        'text': "Loading GPS...",
+        'font': self.font,
         'font_size': self.gps_font_size,
       })
 
-    # Row 2: GPS coordinates (if available)
+    # Row 2: GPS coordinates (or Loading GPS message)
     if gps_location_text:
       rows.append({
         'text': gps_location_text,
-        'font': self.gps_font,
+        'font': self.font,
+        'font_size': self.gps_font_size,
+      })
+    else:
+      rows.append({
+        'text': "Loading GPS...",
+        'font': self.font,
         'font_size': self.gps_font_size,
       })
 
-    # Row 3: GPS time in UTC (if available)
-    if gps_dt is not None:
-      gps_time_str = gps_dt.strftime("%I:%M %p UTC")
-      rows.append({
-        'text': gps_time_str,
-        'font': self.font,
-        'font_size': self.font_size,
-      })
-
-    # Row 4: Local time (using GPS-derived timezone or default)
-    # Use timezone from GPS coordinates if available, otherwise use default
-    local_tz = self._local_tz if self._local_tz else self.default_tz
-    local_dt = datetime.now(local_tz)
+    # Row 3: Local time (using timezone from params/GPS)
+    local_dt = datetime.now(self._local_tz)
 
     date_str = local_dt.strftime("%a, %b %d")
     time_str = local_dt.strftime("%I:%M %p")
@@ -182,20 +161,20 @@ class DateTimeDisplay(Widget):
       'font': self.font,
       'font_size': self.font_size,
     })
-    
+
     # Calculate total height needed
     total_height = sum(row['font_size'] for row in rows) + (len(rows) - 1) * ROW_SPACING
-    
+
     # Position at bottom right corner
     text_x_base = rect.x + rect.width - DATE_TIME_RIGHT_OFFSET
     current_y = rect.y + rect.height - DATE_TIME_MARGIN - total_height
-    
+
     # Draw each row
     for row in rows:
       # Calculate text dimensions
       text_dims = rl.measure_text_ex(row['font'], row['text'], row['font_size'], 0)
       text_x = text_x_base - text_dims.x
-      
+
       # Draw shadow
       rl.draw_text_ex(
         row['font'],
@@ -205,7 +184,7 @@ class DateTimeDisplay(Widget):
         0,
         self.text_color_shadow
       )
-      
+
       # Draw main text
       rl.draw_text_ex(
         row['font'],
@@ -215,6 +194,6 @@ class DateTimeDisplay(Widget):
         0,
         self.text_color
       )
-      
+
       # Move to next row position
       current_y += row['font_size'] + ROW_SPACING

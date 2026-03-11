@@ -556,6 +556,10 @@
     "title": "Last GPS Position LLK",
     "description": ""
   },
+  "LastTimezone": {
+    "title": "Last Timezone",
+    "description": "Last known timezone from GPS coordinates"
+  },
   "LastManagerExitReason": {
     "title": "Last Manager Exit Reason",
     "description": ""
