@@ -11,8 +11,8 @@ from openpilot.system.ui.sunnypilot.widgets.option_control import OptionControlS
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.widgets.scroller_tici import Scroller
-from openpilot.system.ui.sunnypilot.widgets.list_view import option_item_sp, ToggleActionSP, timezone_item_sp
-from openpilot.sunnypilot.system.params_migration import ONROAD_BRIGHTNESS_TIMER_VALUES, TIMEZONE_VALUES
+from openpilot.system.ui.sunnypilot.widgets.list_view import option_item_sp, ToggleActionSP
+from openpilot.sunnypilot.system.params_migration import ONROAD_BRIGHTNESS_TIMER_VALUES
 
 
 class OnroadBrightness(IntEnum):
@@ -30,12 +30,6 @@ class DisplayLayout(Widget):
     self._scroller = Scroller(items, line_separator=True, spacing=0)
 
   def _initialize_items(self):
-    self._timezone = timezone_item_sp(
-      title=lambda: tr("Time Zone"),
-      description=lambda: tr("Select your local time zone for displaying the correct time on the onroad screen."),
-      param="TimeZone",
-      inline=True
-    )
     self._onroad_brightness = option_item_sp(
       param="OnroadScreenOffBrightness",
       title=lambda: tr("Onroad Brightness"),
@@ -71,7 +65,6 @@ class DisplayLayout(Widget):
       inline=True
     )
     items = [
-      self._timezone,
       self._onroad_brightness,
       self._onroad_brightness_timer,
       self._interactivity_timeout,
@@ -103,11 +96,6 @@ class DisplayLayout(Widget):
           reverse_map = {v: k for k, v in _item.action_item.value_map.items()}
           raw_value = reverse_map.get(raw_value, _item.action_item.current_value)
         _item.action_item.set_value(raw_value)
-      elif hasattr(_item.action_item, 'param_key') and _item.action_item.param_key == "TimeZone":
-        # Timezone selector - just refresh from params
-        current_tz = self._params.get("TimeZone", return_default=True)
-        if current_tz in TIMEZONE_VALUES:
-          _item.action_item.current_index = TIMEZONE_VALUES.index(current_tz)
 
     brightness_val = self._params.get("OnroadScreenOffBrightness", return_default=True)
     self._onroad_brightness_timer.action_item.set_enabled(brightness_val not in (OnroadBrightness.AUTO, OnroadBrightness.AUTO_DARK))

@@ -10,7 +10,7 @@ import os
 
 from openpilot.common.basedir import BASEDIR
 from openpilot.common.params import Params
-from openpilot.sunnypilot.system.params_migration import ONROAD_BRIGHTNESS_TIMER_VALUES, TIMEZONE_VALUES, TIMEZONE_LABELS, DEFAULT_TIMEZONE
+from openpilot.sunnypilot.system.params_migration import ONROAD_BRIGHTNESS_TIMER_VALUES
 
 METADATA_PATH = os.path.join(os.path.dirname(__file__), "../params_metadata.json")
 TORQUE_VERSIONS_JSON = os.path.join(BASEDIR, "sunnypilot", "selfdrive", "controls", "lib", "latcontrol_torque_versions.json")
@@ -60,9 +60,6 @@ def main():
   # update onroad screen brightness timer params
   update_onroad_brightness_timer_param()
 
-  # update timezone params
-  update_timezone_param()
-
   # update torque versions param
   update_torque_versions_param()
 
@@ -104,24 +101,6 @@ def update_onroad_brightness_timer_param():
       print(f"Updated OnroadScreenOffTimer options in params_metadata.json with {len(options)} options.")
   except Exception as e:
     print(f"Failed to update OnroadScreenOffTimer options in params_metadata.json: {e}")
-
-
-def update_timezone_param():
-  try:
-    with open(METADATA_PATH) as f:
-      params_metadata = json.load(f)
-    if "TimeZone" in params_metadata:
-      options = []
-      for tz in TIMEZONE_VALUES:
-        label = TIMEZONE_LABELS.get(tz, tz)
-        options.append({"value": tz, "label": label})
-      params_metadata["TimeZone"]["options"] = options
-      with open(METADATA_PATH, 'w') as f:
-        json.dump(params_metadata, f, indent=2)
-        f.write('\n')
-      print(f"Updated TimeZone options in params_metadata.json with {len(options)} options.")
-  except Exception as e:
-    print(f"Failed to update TimeZone options in params_metadata.json: {e}")
 
 
 def update_torque_versions_param():
